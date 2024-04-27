@@ -1,0 +1,27 @@
+syntax = "proto3";
+
+package com.mingyan.smartClassroom;
+
+option java_multiple_files = true;
+option java_package = "com.mingyan.smartClassroom.CCTVService";
+option java_outer_classname = "CCTVServiceProto";
+
+// The greeter service definition.
+service CCTVServerService {
+  // Streams video frames from the client to the server
+  rpc StreamVideo (stream VideoFrame) returns (StreamVideoResponse) {}
+}
+
+// The request message containing video frame data.
+message VideoFrame {
+  // to simulate binary, I use random number instead.
+  int64 number = 1;
+  // Timestamp for when the frame was captured
+  int64 timestamp = 2;
+}
+
+// The response message containing results of the streaming.
+message StreamVideoResponse {
+  // A message or confirmation that the stream was received and processed
+  string message = 1;
+}
