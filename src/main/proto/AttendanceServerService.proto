@@ -1,0 +1,32 @@
+syntax = "proto3";
+
+package com.mingyan.smartClassroom;
+
+option java_multiple_files = true;
+option java_package = "com.mingyan.smartClassroom.attendanceTrackingService";
+option java_outer_classname = "AttendanceTrackingServiceProto";
+
+service StreamingServerService {
+  // Unary RPC
+  rpc sendUnaryRequest(AttendanceRequest) returns (AttendanceResponse);
+
+  // Server-side streaming RPC
+  rpc streamServerRequest(StreamServerRequest) returns (stream StreamServerResponse);
+
+}
+
+message AttendanceRequest {
+  string name = 1;
+}
+
+message AttendanceResponse {
+  string message = 1;
+}
+
+message StreamServerRequest {
+  string serverName = 1;
+}
+
+message StreamServerResponse {
+  string message = 1;
+}
