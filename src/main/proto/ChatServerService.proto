@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+package com.mingyan.smartClassroom;
+option java_multiple_files = true;
+option java_package = "com.mingyan.smartClassroom.ChatService";
+option java_outer_classname = "ChatServiceProto";
+
+service ClassroomInteraction {
+  // Streams messages between students and teacher
+  rpc LiveSession(stream ClassroomMessage) returns (stream ClassroomMessage) {}
+}
+
+message ClassroomMessage {
+  string user = 1; // could be 'teacher' or 'student_id'
+  string message = 2; // the message content
+  int64 timestamp = 3; // message timestamp
+}
