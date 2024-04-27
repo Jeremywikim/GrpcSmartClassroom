@@ -4,13 +4,26 @@ import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 
 import java.io.IOException;
+import java.nio.file.StandardOpenOption;
 import java.time.format.DateTimeFormatter;
 import java.util.concurrent.TimeUnit;
 import java.time.LocalDateTime;
 
+import java.io.FileWriter;
+import java.io.BufferedWriter;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+
 
 public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.StreamingServerServiceImplBase {
 
+    /*
+    * override send sendUnaryRequest to have some customized features
+    * formattedDate is the time when client sends name to the server,
+    * the server will respond '"Welcome, " + clientName + "! You checked at " + formattedDate'
+    * also, the server saves the clientName, formattedDate information from each request.
+     */
     @Override
     public void sendUnaryRequest(AttendanceRequest request, StreamObserver<AttendanceResponse> responseObserver) {
         String clientName = request.getName();
@@ -25,8 +38,15 @@ public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.St
                 .build();
         responseObserver.onNext(response);
         responseObserver.onCompleted();
+
+        // Save to CSV
+        saveAttendanceRecord(clientName, formattedDate);
     }
 
+
+    /*
+    * this is streamServerRequest
+     */
     @Override
     public void streamServerRequest(StreamServerRequest request, StreamObserver<StreamServerResponse> responseObserver) {
         String serverName = request.getServerName();
@@ -51,7 +71,40 @@ public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.St
         streamingThread.start();
     }
 
+
+    /*
+    * The method appends each client's name and check-in time to a CSV file.
+    * It uses BufferedWriter and handles potential I/O exceptions.
+    * The method is marked synchronized to prevent concurrent modifications
+    *  of the file from multiple threads, which might corrupt the file.
+     */
+    private synchronized void saveAttendanceRecord(String clientName, String date) {
+        try (BufferedWriter bw = Files.newBufferedWriter(Paths.get("attendance_records.csv"), StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+            bw.write(clientName + "," + date);
+            bw.newLine();
+        } catch (IOException e) {
+            System.err.println("Failed to write to CSV: " + e.getMessage());
+        }
+    }
+
+    /*
+    * initCSV()
+    * When the server starts, it checks if the CSV file exists. If not, it creates the file
+    * and writes a header row. This ensures that data fields are properly labeled and organized.
+     */
+    private static void initCSV() throws IOException {
+        if (!Files.exists(Paths.get("attendance_records.csv"))) {
+            try (BufferedWriter bw = Files.newBufferedWriter(Paths.get("attendance_records.csv"))) {
+                bw.write("ClientName,FormattedDate");
+                bw.newLine();
+            }
+        }
+    }
+
+
     public static void main(String[] args) throws IOException, InterruptedException {
+        // // Ensure the CSV file exists and has a header
+        initCSV();
         AttendanceServerServiceServer server = new AttendanceServerServiceServer();
         Server grpcServer = ServerBuilder.forPort(8080)
                 .addService(server)
