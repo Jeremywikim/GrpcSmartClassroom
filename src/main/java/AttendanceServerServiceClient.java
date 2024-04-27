@@ -40,6 +40,12 @@ public class AttendanceServerServiceClient {
 //        });
 //    }
 
+
+    /*
+    * sendUnaryRequest is used to send a Unary Request to server with two parameters.
+    * name is to container of name of student, responseObserver is container to contain
+    * the information of response of server
+     */
     public void sendUnaryRequest(String name, StreamObserver<AttendanceResponse> responseObserver) {
         AttendanceRequest request = AttendanceRequest.newBuilder()
                 .setName(name)
@@ -48,7 +54,9 @@ public class AttendanceServerServiceClient {
     }
 
 
-
+    /*
+    * streamServerRequest is
+     */
     public void streamServerRequest() {
         StreamObserver<StreamServerResponse> responseObserver = new StreamObserver<StreamServerResponse>() {
             @Override
@@ -70,6 +78,11 @@ public class AttendanceServerServiceClient {
         stub.streamServerRequest(StreamServerRequest.newBuilder().setServerName("Server01").build(), responseObserver);
     }
 
+
+    /*
+    * for the test (before I change the parameter of sendUnaryRequest ), this main function went well
+    * the same for streamServerRequest().
+     */
     public static void main(String[] args) {
         AttendanceServerServiceClient client = new AttendanceServerServiceClient("localhost", 8080);
 //        client.sendUnaryRequest("Client01");
@@ -86,6 +99,10 @@ public class AttendanceServerServiceClient {
         }
     }
 
+    /*
+    * shutdown is used to shut down the client, ACTUALLY, only between the test, I use it to
+    * shut down the client (just run the main function), I keep it here maybe it is useful in future.
+     */
     public void shutdown() {
         try {
             channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
