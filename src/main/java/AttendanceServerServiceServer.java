@@ -24,7 +24,7 @@ import java.util.logging.Logger;
 public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.StreamingServerServiceImplBase {
 
     static final Logger logger = Logger.getLogger(AttendanceServerServiceServer.class.getName());
-    /*
+    /**
     * override send sendUnaryRequest to have some customized features
     * formattedDate is the time when client sends name to the server,
     * the server will respond '"Welcome, " + clientName + "! You checked at " + formattedDate'
@@ -50,10 +50,10 @@ public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.St
     }
 
 
-    /*
-    * this is streamServerRequest
+    /**
+     * Streams random client names from a CSV file back to the client every 5 seconds,
+     * finishing when all names have been sent.
      */
-
     @Override
     public void streamServerRequest(StreamServerRequest request, StreamObserver<StreamServerResponse> responseObserver) {
         String serverName = request.getServerName();
@@ -114,10 +114,6 @@ public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.St
 
 
 
-
-
-
-
 //    @Override
 //    public void streamServerRequest(StreamServerRequest request, StreamObserver<StreamServerResponse> responseObserver) {
 //        String serverName = request.getServerName();
@@ -143,7 +139,7 @@ public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.St
 //    }
 
 
-    /*
+    /**
     * The method appends each client's name and check-in time to a CSV file.
     * It uses BufferedWriter and handles potential I/O exceptions.
     * The method is marked synchronized to prevent concurrent modifications
@@ -158,7 +154,7 @@ public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.St
         }
     }
 
-    /*
+    /**
     * initCSV()
     * When the server starts, it checks if the CSV file exists. If not, it creates the file
     * and writes a header row. This ensures that data fields are properly labeled and organized.

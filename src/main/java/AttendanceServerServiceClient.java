@@ -11,6 +11,9 @@ public class AttendanceServerServiceClient {
     private final ManagedChannel channel;
     private final StreamingServerServiceGrpc.StreamingServerServiceStub stub;
 
+    /**
+     * AttendanceServerServiceClient to send request to server
+     */
     public AttendanceServerServiceClient(String host, int port) {
         this.channel = ManagedChannelBuilder.forAddress(host, port)
                 .usePlaintext()
@@ -41,7 +44,7 @@ public class AttendanceServerServiceClient {
 //    }
 
 
-    /*
+    /**
     * sendUnaryRequest is used to send a Unary Request to server with two parameters.
     * name is to container of name of student, responseObserver is container to contain
     * the information of response of server
@@ -54,8 +57,9 @@ public class AttendanceServerServiceClient {
     }
 
 
-    /*
-    * streamServerRequest is
+    /**
+    * streamServerRequest is to send request to server
+     * and get stream response
      */
 
     public void streamServerRequest(StreamObserver<StreamServerResponse> responseObserver) {
@@ -91,7 +95,7 @@ public class AttendanceServerServiceClient {
 //    }
 
 
-    /*
+    /**
     * for the test (before I change the parameter of sendUnaryRequest ), this main function went well
     * the same for streamServerRequest().
      */
@@ -111,7 +115,7 @@ public class AttendanceServerServiceClient {
         }
     }
 
-    /*
+    /**
     * shutdown is used to shut down the client, ACTUALLY, only between the test, I use it to
     * shut down the client (just run the main function), I keep it here maybe it is useful in future.
      */

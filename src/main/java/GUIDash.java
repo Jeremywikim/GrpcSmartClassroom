@@ -30,7 +30,7 @@ public class GUIDash {
         });
     }
 
-    /*
+    /**
      * This function is used to create a gui dashboard
      * There are three buttons at the first page of the app.
      *
@@ -121,11 +121,10 @@ public class GUIDash {
 
 
 
-        /*
+        /**
         * Panel for the chat service page
         * chatPanel from here
          */
-
         JPanel chatPanel = new JPanel(new BorderLayout());
 
         chatArea = new JTextArea();
@@ -203,7 +202,7 @@ public class GUIDash {
     }
 
 
-    /*
+    /**
      * This function is used to send name to server and get response
      */
     private void clockIn() {
@@ -217,9 +216,8 @@ public class GUIDash {
     }
 
 
-    /*
+    /**
      * This is used to get response from server and pass it to the text filed
-     *
      */
     private class UnaryResponseHandler implements StreamObserver<AttendanceResponse> {
         @Override
@@ -252,8 +250,8 @@ public class GUIDash {
     }
 
 
-    /*
-    * for chat service
+    /**
+    * for chat service to connect to chat server
      */
 
     private void sendMessage() {
@@ -292,8 +290,8 @@ public class GUIDash {
     }
 
 
-    /*
-    *
+    /**
+    * To connect to attendance server to get stream response
      */
 
     private void startPresentationStream() {
@@ -303,11 +301,13 @@ public class GUIDash {
                 SwingUtilities.invokeLater(() -> presentationArea.append(response.getMessage() + "\n"));
             }
 
+            // error handle
             @Override
             public void onError(Throwable t) {
                 SwingUtilities.invokeLater(() -> presentationArea.append("Error: " + t.getMessage() + "\n"));
             }
 
+            // To tell client the finish of stream
             @Override
             public void onCompleted() {
                 SwingUtilities.invokeLater(() -> presentationArea.append("Streaming completed.\n"));

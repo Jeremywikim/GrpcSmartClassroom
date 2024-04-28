@@ -13,6 +13,8 @@
 #### <center> HDip in Science in Computing
 #### <center> Lecturer: Mark Cudden
 #### <center> Academic year: 2023/24
+#### <center> github repo: https://github.com/Jeremywikim/GrpcSmartClassroom.git
+
 
 # <center> Part 1
 ## 1. Domain Description
@@ -145,14 +147,834 @@ in bidirectional rpc.
 ### 3.4 CCTV service (Client side stream rpc)
 #### 3.4.1 Demonstration
 <p align="center">
-  <img src="img/CCTVServer.png" alt="Your Image" width="400">
+  <img src="img/cctv3.png" alt="Your Image" width="400">
 </p>
 <p align="center">
-  <img src="img/CCTVClient.png" alt="Your Image" width="400">
+  <img src="img/cctv4.png" alt="Your Image" width="400">
 </p>
 
-1. In client, I use random number and time to simulate video data. <br>
-and "(int i = 0; i < 10; i++)" to simulate the size of video.
-2. when All data has been sent to the server, the response will be sent to client.
+1. As shown in the images, when the stream of data has been sent to the server, <br>
+    the server sent a response to client (Video stream received successfully.), then the <br>
+    onCompleted function was triggered and the client just shut down.<br>
+    Here is the stack flow:<br><br>
 
-## 4. Service Implementations
+    Client-side Stream Completion: <br>
+    In CCTVServerServiceClient, the shutdown process is initiated after the client completes <br>
+    its interaction, with calling the onCompleted() <br>
+    method on the StreamObserver that is used to send messages to the server. <br>
+    This tells server that the client has finished sending all its data.<br><br>
+
+    Waiting for Server Response:<br>
+    After telling server the completion with onCompleted(), the client still needs to ensure that<br>
+    receive responses from the server.<br><br>
+    
+    Finish Latch: <br>
+    The client uses a CountDownLatch to wait for the server's final response. <br>
+    The onCompleted() method from the server's response observer will decrement this latch, <br>
+    which allows the client to shut down only after the server <br>
+    has also signaled that it has completed the interaction.<br><br>
+    
+    Shutdown Call: <br>
+    Once all responses are received and the interaction is fully completed<br>,
+    the client then shuts down<br><br>
+
+   2. On server side:
+
+    Server-side Stream Handling:
+    The handling of the stream can be<br>
+    set to shut down the server once the streaming  completes. <br>
+    
+    StreamObserver Implementation: 
+    In the server implementation, when the server's StreamObserver's onCompleted() method<br>
+    is called by the client-side, the server can handle this by sending a final message back to<br>
+    the client and then invoking its own shutdown procedures.<br><br>
+    
+    Immediate Shutdown:
+    The server can implement a shutdown directly in the onCompleted() handling of<br>
+    the StreamObserver, which will shut down the server as soon as the client tells server <br>
+    that no more data will be sent. This is a forced shutdown that occurs right after<br>
+    the current client-server interaction ends.<br><br>
+
+
+
+# <center> Part 2   backup
+```java
+import com.mingyan.smartClassroom.CCTVService.*;
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
+import io.grpc.stub.StreamObserver;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
+
+/**
+ * Server to interact with the CCTV client using gRPC.
+ * Connection to the client,
+ * Receiving video frames, and handling request.
+ */
+public class CCTVServerServiceServer {
+
+    private static final Logger logger = Logger.getLogger(CCTVServerServiceServer.class.getName());
+
+    private Server server;
+
+    /**
+     * Starts the gRPC server.
+     * throws IOException if there is an error starting the server.
+     */
+    private void start() throws IOException {
+        int port = 20000; // Initialize and start the server on the specified port
+        server = ServerBuilder.forPort(port)
+                .addService(new CCTVServerServiceImpl())
+                .build()
+                .start();
+        logger.info("CCTV Server started, listening on " + port);
+
+        // Add a shutdown hook to ensure clean shutdown including freeing port and other resources
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.err.println("*** shutting down gRPC server since JVM is shutting down");
+            try {
+                CCTVServerServiceServer.this.stop();
+            } catch (InterruptedException e) {
+                e.printStackTrace(System.err);
+            }
+            System.err.println("*** server shut down");
+        }));
+    }
+
+    /**
+     * Stops the server and waits for it to shut down completely within a timeout.
+     */
+    private void stop() throws InterruptedException {
+        if (server != null) {
+            server.shutdown().awaitTermination(30, TimeUnit.SECONDS); // 30s
+        }
+    }
+
+    /**
+     * Blocks until the server shuts down.
+     * throws InterruptedException if the thread is interrupted while waiting.
+     */
+    private void blockUntilShutdown() throws InterruptedException {
+        if (server != null) {
+            server.awaitTermination();
+        }
+    }
+
+    /**
+     * Implements the server-side logic for the CCTV service.
+     */
+    class CCTVServerServiceImpl extends CCTVServerServiceGrpc.CCTVServerServiceImplBase {
+
+        /**
+         * Handles incoming video frame streams from clients.
+         * return a stream observer to handle the client's video frame stream.
+         */
+        @Override
+        public StreamObserver<VideoFrame> streamVideo(StreamObserver<StreamVideoResponse> responseObserver) {
+            return new StreamObserver<VideoFrame>() {
+                @Override
+                public void onNext(VideoFrame videoFrame) {
+                    // Log each received video frame
+                    logger.info("Received video frame with number: " + videoFrame.getNumber() + " at timestamp: " + videoFrame.getTimestamp());
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    // Log any errors encountered during the stream
+                    logger.warning("StreamVideo encountered error: " + t);
+                }
+
+                @Override
+                public void onCompleted() {
+                    // Send a completion message back to the client
+                    StreamVideoResponse response = StreamVideoResponse.newBuilder()
+                            .setMessage("Video stream received successfully.")
+                            .build();
+                    responseObserver.onNext(response);
+                    responseObserver.onCompleted();
+
+                    // Trigger server shutdown here
+                    try {
+                        CCTVServerServiceServer.this.stop();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+        }
+    }
+
+    /**
+     * Main method to run the server.
+     */
+    public static void main(String[] args) throws IOException, InterruptedException {
+        final CCTVServerServiceServer server = new CCTVServerServiceServer();
+        server.start();
+        server.blockUntilShutdown();
+    }
+}
+
+```
+```java
+import com.mingyan.smartClassroom.CCTVService.*;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.stub.StreamObserver;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
+
+/**
+ * Client to interact with the CCTV service using gRPC.
+ * This class is responsible for establishing a connection to the server,
+ * sending video frames, and handling server responses.
+ */
+public class CCTVServerServiceClient {
+    private static final Logger logger = Logger.getLogger(CCTVServerServiceClient.class.getName());
+    private final ManagedChannel channel; // Channel for making remote calls
+    private final CCTVServerServiceGrpc.CCTVServerServiceStub asyncStub; // Asynchronous stub for making non-blocking calls
+
+    /**
+     * Constructs a client for accessing the server at the given host and port.
+     */
+    public CCTVServerServiceClient(String host, int port) {
+        this(ManagedChannelBuilder.forAddress(host, port)
+                .usePlaintext() // Configure the channel to not use SSL/TLS to allow unencrypted communication
+                .build());
+    }
+
+    /**
+     * Constructs a client for accessing a pre-configured channel.
+     */
+    CCTVServerServiceClient(ManagedChannel channel) {
+        this.channel = channel;
+        asyncStub = CCTVServerServiceGrpc.newStub(channel);
+    }
+
+    /**
+     * Shuts down the channel gracefully.
+     */
+    public void shutdown() throws InterruptedException {
+        channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Async client-side streaming call to send video frames to the server.
+     * This method prepares a latch to handle the asynchronous completion of the video stream.
+     */
+    public void streamVideo() throws InterruptedException {
+        final CountDownLatch finishLatch = new CountDownLatch(1);
+        StreamObserver<StreamVideoResponse> responseObserver = new StreamObserver<StreamVideoResponse>() {
+            @Override
+            public void onNext(StreamVideoResponse response) {
+                logger.info("Server response: " + response.getMessage());
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                logger.warning("StreamVideo failed: " + t);
+                finishLatch.countDown();
+            }
+
+            @Override
+            public void onCompleted() {
+                logger.info("Finished streaming video");
+                finishLatch.countDown();
+            }
+        };
+
+        StreamObserver<VideoFrame> requestObserver = asyncStub.streamVideo(responseObserver);
+        try {
+            // Simulate streaming video data
+            for (int i = 0; i < 10; i++) {
+                long timestamp = System.currentTimeMillis();
+                VideoFrame videoFrame = VideoFrame.newBuilder()
+                        .setNumber((int) (Math.random() * 100))
+                        .setTimestamp(timestamp)
+                        .build();
+                requestObserver.onNext(videoFrame);
+                // Sleep for demonstration purposes
+                Thread.sleep(1000);
+            }
+        } catch (RuntimeException e) {
+            requestObserver.onError(e);
+            throw e;
+        }
+        // Mark the end of requests
+        requestObserver.onCompleted();
+
+        // Wait for the server to respond or error before finishing the client.
+        finishLatch.await(1, TimeUnit.MINUTES);
+    }
+
+    /**
+     * Main method to run the client.
+     * It creates an instance of the client, starts video streaming, and finally shuts down the client.
+     */
+    public static void main(String[] args) throws InterruptedException {
+        CCTVServerServiceClient client = new CCTVServerServiceClient("localhost", 20000);
+        try {
+            client.streamVideo();
+        } finally {
+            client.shutdown();
+        }
+    }
+}
+```
+
+```java
+import com.mingyan.smartClassroom.attendanceTrackingService.*;
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
+import io.grpc.stub.StreamObserver;
+
+import java.io.*;
+import java.nio.file.StandardOpenOption;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.time.LocalDateTime;
+
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
+
+
+public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.StreamingServerServiceImplBase {
+
+    static final Logger logger = Logger.getLogger(AttendanceServerServiceServer.class.getName());
+    /**
+    * override send sendUnaryRequest to have some customized features
+    * formattedDate is the time when client sends name to the server,
+    * the server will respond '"Welcome, " + clientName + "! You checked at " + formattedDate'
+    * also, the server saves the clientName, formattedDate information from each request.
+     */
+    @Override
+    public void sendUnaryRequest(AttendanceRequest request, StreamObserver<AttendanceResponse> responseObserver) {
+        String clientName = request.getName();
+        // Get the current time
+        LocalDateTime now = LocalDateTime.now();
+        // Format it to a readable form
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+        String formattedDate = now.format(formatter);
+        String message = "Welcome, " + clientName + "! You checked at " + formattedDate;
+        AttendanceResponse response = AttendanceResponse.newBuilder()
+                .setMessage(message)
+                .build();
+        responseObserver.onNext(response);
+        responseObserver.onCompleted();
+
+        // Save to CSV
+        saveAttendanceRecord(clientName, formattedDate);
+    }
+
+
+    /**
+     * Streams random client names from a CSV file back to the client every 5 seconds,
+     * finishing when all names have been sent.
+     */
+    @Override
+    public void streamServerRequest(StreamServerRequest request, StreamObserver<StreamServerResponse> responseObserver) {
+        String serverName = request.getServerName();
+        List<String> clientNames = new ArrayList<>();
+        // Load client names from CSV, skipping the first line
+        try (BufferedReader reader = new BufferedReader(new FileReader("attendance_records.csv"))) {
+            String line;
+            boolean firstLine = true;
+            while ((line = reader.readLine()) != null) {
+                if (firstLine) {
+                    firstLine = false; // Skip the first line (titles)
+                    continue;
+                }
+                clientNames.add(line.split(",")[0]); // Assuming the name is the first column
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        AtomicBoolean finished = new AtomicBoolean(false);
+        AtomicInteger nameCounter = new AtomicInteger(1); // Counter for names
+
+        Runnable streamingTask = () -> {
+            try {
+                while (!Thread.currentThread().isInterrupted() && !finished.get()) {
+                    if (clientNames.isEmpty()) {
+                        responseObserver.onNext(StreamServerResponse.newBuilder()
+                                .setMessage("finish!")
+                                .build());
+                        finished.set(true);
+                    } else {
+                        // Pick a random name from the list
+                        int index = (int) (Math.random() * clientNames.size());
+                        String name = clientNames.get(index);
+                        clientNames.remove(index); // Remove the name to avoid resending
+
+                        String message = "NAME #" + nameCounter.getAndIncrement() + ": " + name +
+                                " from " + serverName + ". Current time: " + LocalDateTime.now();
+//                        String message = "Message #" + nameCounter.getAndIncrement() + ": " + name +
+//                                " from " + serverName + ". Current time: " + LocalDateTime.now();
+
+                        responseObserver.onNext(StreamServerResponse.newBuilder()
+                                .setMessage(message)
+                                .build());
+                    }
+                    Thread.sleep(5000); // Stream every 5 seconds
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                responseObserver.onCompleted();
+            }
+        };
+
+        Thread streamingThread = new Thread(streamingTask);
+        streamingThread.start();
+    }
+
+
+
+//    @Override
+//    public void streamServerRequest(StreamServerRequest request, StreamObserver<StreamServerResponse> responseObserver) {
+//        String serverName = request.getServerName();
+//        Runnable streamingTask = () -> {
+//            try {
+//                while (!Thread.currentThread().isInterrupted()) {
+//                    String message = "This is a message from the server: " + serverName + ". Current time: " + LocalDateTime.now();
+//                    StreamServerResponse response = StreamServerResponse.newBuilder()
+//                            .setMessage(message)
+//                            .build();
+//                    responseObserver.onNext(response);
+//                    Thread.sleep(5000); // Stream every 5 seconds
+//                }
+//            } catch (InterruptedException e) {
+//                Thread.currentThread().interrupt();
+//            } finally {
+//                responseObserver.onCompleted();
+//            }
+//        };
+//
+//        Thread streamingThread = new Thread(streamingTask);
+//        streamingThread.start();
+//    }
+
+
+    /**
+    * The method appends each client's name and check-in time to a CSV file.
+    * It uses BufferedWriter and handles potential I/O exceptions.
+    * The method is marked synchronized to prevent concurrent modifications
+    *  of the file from multiple threads, which might corrupt the file.
+     */
+    private synchronized void saveAttendanceRecord(String clientName, String date) {
+        try (BufferedWriter bw = Files.newBufferedWriter(Paths.get("attendance_records.csv"), StandardOpenOption.CREATE, StandardOpenOption.APPEND)) {
+            bw.write(clientName + "," + date);
+            bw.newLine();
+        } catch (IOException e) {
+            System.err.println("Failed to write to CSV: " + e.getMessage());
+        }
+    }
+
+    /**
+    * initCSV()
+    * When the server starts, it checks if the CSV file exists. If not, it creates the file
+    * and writes a header row. This ensures that data fields are properly labeled and organized.
+     */
+    private static void initCSV() throws IOException {
+        if (!Files.exists(Paths.get("attendance_records.csv"))) {
+            try (BufferedWriter bw = Files.newBufferedWriter(Paths.get("attendance_records.csv"))) {
+                bw.write("ClientName,FormattedDate");
+                bw.newLine();
+            }
+        }
+    }
+
+
+    public static void main(String[] args) throws IOException, InterruptedException {
+        // // Ensure the CSV file exists and has a header
+        initCSV();
+        AttendanceServerServiceServer server = new AttendanceServerServiceServer();
+        Server grpcServer = ServerBuilder.forPort(8080)
+                .addService(server)
+                .build();
+
+        grpcServer.start();
+//        System.out.println("Attendance Server started, listening on port 8080\n");
+        logger.info("Attendance Server started, listening on port 8080\n");
+
+        // Graceful shutdown
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.out.println("Shutting down gRPC server");
+            try {
+                grpcServer.shutdown().awaitTermination(30, TimeUnit.SECONDS);
+            } catch (InterruptedException e) {
+                e.printStackTrace(System.err);
+            }
+        }));
+
+        grpcServer.awaitTermination();
+    }
+}
+```
+```java
+import com.mingyan.smartClassroom.attendanceTrackingService.*;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.stub.StreamObserver;
+
+import java.util.Scanner;
+import java.util.concurrent.TimeUnit;
+
+public class AttendanceServerServiceClient {
+
+    private final ManagedChannel channel;
+    private final StreamingServerServiceGrpc.StreamingServerServiceStub stub;
+
+    /**
+     * AttendanceServerServiceClient to send request to server
+     */
+    public AttendanceServerServiceClient(String host, int port) {
+        this.channel = ManagedChannelBuilder.forAddress(host, port)
+                .usePlaintext()
+                .build();
+        this.stub = StreamingServerServiceGrpc.newStub(channel);
+    }
+
+//    public void sendUnaryRequest(String name) {
+//        AttendanceRequest request = AttendanceRequest.newBuilder()
+//                .setName(name)
+//                .build();
+//        stub.sendUnaryRequest(request, new StreamObserver<AttendanceResponse>() {
+//            @Override
+//            public void onNext(AttendanceResponse response) {
+//                System.out.println("Unary response from server: " + response.getMessage());
+//            }
+//
+//            @Override
+//            public void onError(Throwable t) {
+//                System.err.println("Error in unary request: " + t.getMessage());
+//            }
+//
+//            @Override
+//            public void onCompleted() {
+//                System.out.println("Unary request completed");
+//            }
+//        });
+//    }
+
+
+    /**
+    * sendUnaryRequest is used to send a Unary Request to server with two parameters.
+    * name is to container of name of student, responseObserver is container to contain
+    * the information of response of server
+     */
+    public void sendUnaryRequest(String name, StreamObserver<AttendanceResponse> responseObserver) {
+        AttendanceRequest request = AttendanceRequest.newBuilder()
+                .setName(name)
+                .build();
+        stub.sendUnaryRequest(request, responseObserver);  // Use the passed StreamObserver directly
+    }
+
+
+    /**
+    * streamServerRequest is to send request to server
+     * and get stream response
+     */
+
+    public void streamServerRequest(StreamObserver<StreamServerResponse> responseObserver) {
+        StreamServerRequest request = StreamServerRequest.newBuilder()
+                .setServerName("Server01")
+                .build();
+        stub.streamServerRequest(request, responseObserver);
+    }
+
+
+
+
+
+//    public void streamServerRequest() {
+//        StreamObserver<StreamServerResponse> responseObserver = new StreamObserver<StreamServerResponse>() {
+//            @Override
+//            public void onNext(StreamServerResponse response) {
+//                System.out.println("Server message: " + response.getMessage());
+//            }
+//
+//            @Override
+//            public void onError(Throwable t) {
+//                System.err.println("Error in server streaming: " + t.getMessage());
+//            }
+//
+//            @Override
+//            public void onCompleted() {
+//                System.out.println("Server streaming completed");
+//            }
+//        };
+//
+//        stub.streamServerRequest(StreamServerRequest.newBuilder().setServerName("Server01").build(), responseObserver);
+//    }
+
+
+    /**
+    * for the test (before I change the parameter of sendUnaryRequest ), this main function went well
+    * the same for streamServerRequest().
+     */
+    public static void main(String[] args) {
+        AttendanceServerServiceClient client = new AttendanceServerServiceClient("localhost", 8080);
+//        client.sendUnaryRequest("Client01");
+//        client.streamServerRequest();
+
+        Scanner scanner = new Scanner(System.in);
+        while (true) {
+            System.out.println("Press 'Q' to quit");
+            String input = scanner.nextLine();
+            if (input.equalsIgnoreCase("Q")) {
+                client.shutdown();
+                break;
+            }
+        }
+    }
+
+    /**
+    * shutdown is used to shut down the client, ACTUALLY, only between the test, I use it to
+    * shut down the client (just run the main function), I keep it here maybe it is useful in future.
+     */
+    public void shutdown() {
+        try {
+            channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+        } catch (InterruptedException e) {
+            System.err.println("Error while shutting down client: " + e.getMessage());
+        }
+    }
+}
+```
+```java
+import com.mingyan.smartClassroom.CCTVService.*;
+import io.grpc.Server;
+import io.grpc.ServerBuilder;
+import io.grpc.stub.StreamObserver;
+import java.io.IOException;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
+
+/**
+ * Server to interact with the CCTV client using gRPC.
+ * Connection to the client,
+ * Receiving video frames, and handling request.
+ */
+public class CCTVServerServiceServer {
+
+    private static final Logger logger = Logger.getLogger(CCTVServerServiceServer.class.getName());
+
+    private Server server;
+
+    /**
+     * Starts the gRPC server.
+     * throws IOException if there is an error starting the server.
+     */
+    private void start() throws IOException {
+        int port = 20000; // Initialize and start the server on the specified port
+        server = ServerBuilder.forPort(port)
+                .addService(new CCTVServerServiceImpl())
+                .build()
+                .start();
+        logger.info("CCTV Server started, listening on " + port);
+
+        // Add a shutdown hook to ensure clean shutdown including freeing port and other resources
+        Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+            System.err.println("*** shutting down gRPC server since JVM is shutting down");
+            try {
+                CCTVServerServiceServer.this.stop();
+            } catch (InterruptedException e) {
+                e.printStackTrace(System.err);
+            }
+            System.err.println("*** server shut down");
+        }));
+    }
+
+    /**
+     * Stops the server and waits for it to shut down completely within a timeout.
+     */
+    private void stop() throws InterruptedException {
+        if (server != null) {
+            server.shutdown().awaitTermination(30, TimeUnit.SECONDS); // 30s
+        }
+    }
+
+    /**
+     * Blocks until the server shuts down.
+     * throws InterruptedException if the thread is interrupted while waiting.
+     */
+    private void blockUntilShutdown() throws InterruptedException {
+        if (server != null) {
+            server.awaitTermination();
+        }
+    }
+
+    /**
+     * Implements the server-side logic for the CCTV service.
+     */
+    class CCTVServerServiceImpl extends CCTVServerServiceGrpc.CCTVServerServiceImplBase {
+
+        /**
+         * Handles incoming video frame streams from clients.
+         * return a stream observer to handle the client's video frame stream.
+         */
+        @Override
+        public StreamObserver<VideoFrame> streamVideo(StreamObserver<StreamVideoResponse> responseObserver) {
+            return new StreamObserver<VideoFrame>() {
+                @Override
+                public void onNext(VideoFrame videoFrame) {
+                    // Log each received video frame
+                    logger.info("Received video frame with number: " + videoFrame.getNumber() + " at timestamp: " + videoFrame.getTimestamp());
+                }
+
+                @Override
+                public void onError(Throwable t) {
+                    // Log any errors encountered during the stream
+                    logger.warning("StreamVideo encountered error: " + t);
+                }
+
+                @Override
+                public void onCompleted() {
+                    // Send a completion message back to the client
+                    StreamVideoResponse response = StreamVideoResponse.newBuilder()
+                            .setMessage("Video stream received successfully.")
+                            .build();
+                    responseObserver.onNext(response);
+                    responseObserver.onCompleted();
+
+                    // Trigger server shutdown here
+                    try {
+                        CCTVServerServiceServer.this.stop();
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
+                }
+            };
+        }
+    }
+
+    /**
+     * Main method to run the server.
+     */
+    public static void main(String[] args) throws IOException, InterruptedException {
+        final CCTVServerServiceServer server = new CCTVServerServiceServer();
+        server.start();
+        server.blockUntilShutdown();
+    }
+}
+```
+```java
+import com.mingyan.smartClassroom.CCTVService.*;
+import io.grpc.ManagedChannel;
+import io.grpc.ManagedChannelBuilder;
+import io.grpc.stub.StreamObserver;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.logging.Logger;
+
+/**
+ * Client to interact with the CCTV service using gRPC.
+ * This class is responsible for establishing a connection to the server,
+ * sending video frames, and handling server responses.
+ */
+public class CCTVServerServiceClient {
+    private static final Logger logger = Logger.getLogger(CCTVServerServiceClient.class.getName());
+    private final ManagedChannel channel; // Channel for making remote calls
+    private final CCTVServerServiceGrpc.CCTVServerServiceStub asyncStub; // Asynchronous stub for making non-blocking calls
+
+    /**
+     * Constructs a client for accessing the server at the given host and port.
+     */
+    public CCTVServerServiceClient(String host, int port) {
+        this(ManagedChannelBuilder.forAddress(host, port)
+                .usePlaintext() // Configure the channel to not use SSL/TLS to allow unencrypted communication
+                .build());
+    }
+
+    /**
+     * Constructs a client for accessing a pre-configured channel.
+     */
+    CCTVServerServiceClient(ManagedChannel channel) {
+        this.channel = channel;
+        asyncStub = CCTVServerServiceGrpc.newStub(channel);
+    }
+
+    /**
+     * Shuts down the channel gracefully.
+     */
+    public void shutdown() throws InterruptedException {
+        channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
+    }
+
+    /**
+     * Async client-side streaming call to send video frames to the server.
+     * This method prepares a latch to handle the asynchronous completion of the video stream.
+     */
+    public void streamVideo() throws InterruptedException {
+        final CountDownLatch finishLatch = new CountDownLatch(1);
+        StreamObserver<StreamVideoResponse> responseObserver = new StreamObserver<StreamVideoResponse>() {
+            @Override
+            public void onNext(StreamVideoResponse response) {
+                logger.info("Server response: " + response.getMessage());
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                logger.warning("StreamVideo failed: " + t);
+                finishLatch.countDown();
+            }
+
+            @Override
+            public void onCompleted() {
+                logger.info("Finished streaming video");
+                finishLatch.countDown();
+            }
+        };
+
+        StreamObserver<VideoFrame> requestObserver = asyncStub.streamVideo(responseObserver);
+        try {
+            // Simulate streaming video data
+            for (int i = 0; i < 10; i++) {
+                long timestamp = System.currentTimeMillis();
+                VideoFrame videoFrame = VideoFrame.newBuilder()
+                        .setNumber((int) (Math.random() * 100))
+                        .setTimestamp(timestamp)
+                        .build();
+                requestObserver.onNext(videoFrame);
+                // Sleep for demonstration purposes
+                Thread.sleep(1000);
+            }
+        } catch (RuntimeException e) {
+            requestObserver.onError(e);
+            throw e;
+        }
+        // Mark the end of requests
+        requestObserver.onCompleted();
+
+        // Wait for the server to respond or error before finishing the client.
+        finishLatch.await(1, TimeUnit.MINUTES);
+    }
+
+    /**
+     * Main method to run the client.
+     * It creates an instance of the client, starts video streaming, and finally shuts down the client.
+     */
+    public static void main(String[] args) throws InterruptedException {
+        CCTVServerServiceClient client = new CCTVServerServiceClient("localhost", 20000);
+        try {
+            client.streamVideo();
+        } finally {
+            client.shutdown();
+        }
+    }
+}
+```
+
+
+

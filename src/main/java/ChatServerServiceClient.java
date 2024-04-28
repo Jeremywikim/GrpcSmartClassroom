@@ -14,31 +14,38 @@ import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.stub.StreamObserver;
 
+/**
+ * ChatServerServiceClient facilitates communication with a gRPC service for a chat system.
+ */
 public class ChatServerServiceClient {
     private final ManagedChannel channel;
     private final ClassroomInteractionGrpc.ClassroomInteractionStub stub;
 
+    /**
+     * Constructs a client connecting to a chat server at the specified host and port.
+     */
     public ChatServerServiceClient(String host, int port) {
+        // Build a channel and a stub for making calls to the server.
         this.channel = ManagedChannelBuilder.forAddress(host, port)
                 .usePlaintext()
                 .build();
         this.stub = ClassroomInteractionGrpc.newStub(channel);
     }
 
+    /**
+     * Starts a chat session with the server using bidirectional streaming.
+     */
     public StreamObserver<ClassroomMessage> startChat(StreamObserver<ClassroomMessage> responseObserver) {
         return stub.liveSession(responseObserver);
     }
 
+    /**
+     * Gracefully shuts down the client's channel.
+     */
     public void shutdown() throws InterruptedException {
         channel.shutdown().awaitTermination(5, TimeUnit.SECONDS);
     }
 }
-
-
-
-
-
-
 
 
 
