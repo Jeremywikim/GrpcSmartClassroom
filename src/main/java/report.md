@@ -15,68 +15,75 @@
 #### <center> Academic year: 2023/24
 #### <center> github repo: https://github.com/Jeremywikim/GrpcSmartClassroom.git
 
-
+<br><br>
 # <center> Part 1
 ## 1. Domain Description
 
-For my smart classroom scenario, I have four rpc services to track students attendance(simple rpc), <br>
-random arrangement of presentation(server side stream rpc),bidirectional chatting prompt(bidirectional rpc)
-and CCTV systems(client side stream rpc). The overall aim of the app is designed to provide convenience for<br>
+For my smart classroom scenario, I have four rpc services to track students<br>
+attendance(simple rpc), random arrangement of presentation(server side stream rpc),<br>
+bidirectional chatting prompt(bidirectional rpc) and <br>
+CCTV systems(client side stream rpc).
+The overall aim of the app is designed to provide convenience for<br>
 students and teachers, so that all four services I picked are very common used.
 
 Attendance Tracking Service: <br>
-Integrating with students to get student's name sent to server's recording csv file, with essential<br>
-information as student name and the clocked in time (the time is server side time), so that Tutors can<br>
-easily know the exact problem of attendance. (Also, I have another service based on the attended students)<br>
+Integrating with students to get student's name sent to server's recording csv<br>
+file, with essential information as student name and the clocked in time <br>
+(the time is server side time), so that Tutors can easily know the exact <br>
+problem of attendance. (Also, I have another service based on the attended students)<br>
 
 Chat Service: <br>
-It is another common usage in class, students can easily send questions to tutor and get responses during lessons.<br>
+It is another common usage in class, students can easily send questions to<br>
+tutor and get responses during lessons.<br>
 
 Presentation Management Service: <br>
-Managing the order of student presentations, ensuring a smooth transition between speakers and providing the<br>
-instructor with control over the session flow.<br>
+Managing the order of student presentations, ensuring a smooth transition between<br>
+speakers and providing the instructor with control over the session flow.<br>
 
 CCTV Service:<br>
-Ensuring a safe and secure learning environment is important, and the CCTV Service plays<br>
-a crucial role in achieving this objective.<br>
+Ensuring a safe and secure learning environment is important, and the CCTV<br>
+Service plays a crucial role in achieving this objective.<br>
 
-In my case project, attendance service is the most important one, as it not only gets the information<br>
-of students' attendance but also provides presentation service basic data, in real scenario, tutors might<br>
-manage random presentation during class(so the exact attended students are necessary). chat service is also playing<br>
-an essential role especially in a big classroom with much more students. Lastly, CCTV service usually<br>
+In my case project, attendance service is the most important one, as it not<br>
+only gets the information of students' attendance but also provides <br>
+presentation service basic data, in real scenario, tutors might manage random<br>
+presentation during class(so the exact attended students are necessary). <br>
+chat service is also playing an essential role especially in a big classroom<br>
+with much more students. Lastly, CCTV service usually<br>
 runs all the day (I made it simple in my case, but certainly, it ain't simple ).
 
 ## 2. Service definition and RPC
 
-Attendance Tracking Service
+Attendance Tracking Service<br>
 
-    RPC Methods:
-        sendUnaryRequest(unary rpc): Recording a student's attendance and return confirm.
-            Request: AttendanceRequest contains studentName,it comes from the entering prompt.
-            Response: AttendanceResponse includes message confirming successfuly clocked-in. in detail,
-            it is override as "Welcome, " + clientName + "! You checked at " + formattedDate in Implementations.
+RPC Methods:<br>
+sendUnaryRequest(unary rpc): Recording a student's attendance and return confirm.<br>
+Request: AttendanceRequest contains studentName,it comes from the entering prompt.<br>
+Response: AttendanceResponse includes message confirming successfuly clocked-in. <br>
+in detail, it is override as "Welcome, " + clientName + "! You checked at " + <br>
+formattedDate in Implementations.<br>
 
-Presentation Service
+Presentation Service<br>
 
-    RPC Methods:        
-            streamServerRequest(server side stream rpc): Adding a student to the presentation queue.
-                Request: PresentationRequest specifies the sessionDate.
-                Response: PresentationList provides a list of students and the exact time of server.
+RPC Methods:  <br>      
+streamServerRequest(server side stream rpc): Adding a student to the presentation queue.<br>
+Request: PresentationRequest specifies the sessionDate.<br>
+Response: PresentationList provides a list of students and the exact time of server.<br>
 
 
-Chat Service
+Chat Service<br>
 
-    RPC Methods:
-        LiveSession (bidirectional): Sending and receiving stream messages between user and server.
-            Request: ClassroomMessage includes user(name), message,timestamp.
-            Response: MessageResponse confirms the message delivery with status.
+RPC Methods:<br>
+LiveSession (bidirectional): Sending and receiving stream messages between user and server.<br>
+Request: ClassroomMessage includes user(name), message,timestamp.<br>
+Response: MessageResponse confirms the message delivery with status.<br>
 
-CCTV Service
+CCTV Service<br>
 
-    RPC Methods:
-        StreamVideo (client side stream rpc): Sending stream from client to server.
-            Request: VideoFrame includes number (simulating images) and timestamp.
-            Response: StreamVideoResponse confirms that vedio is transfered successfuly.
+RPC Methods:<br>
+StreamVideo (client side stream rpc): Sending stream from client to server.<br>
+Request: VideoFrame includes number (simulating images) and timestamp.<br>
+Response: StreamVideoResponse confirms that video is transferred successfully.<br>
 
 ## 3. Service Implementations
 
@@ -94,23 +101,26 @@ Clicking on the button, it goes to attendance panel, showing as below.
   <img src="img/attendance.png" alt="Your Image" width="400">
 </p>
 
-At the above part there is a text area showing "please enter your name",middle part is enter prompt<br>
-that allows students enter their name, then click on the confirm button, the name will be sent to the server.<br>
-and saved in a csv file, also, confirm information will be response to the client. like image below.
+At the above part there is a text area showing "please enter your name",middle <br>
+part is enter prompt that allows students enter their name, then click on the<br>
+confirm button, the name will be sent to the server. and saved in a csv file, <br>
+also, confirm information will be response to the client. like image below.<br><br>
+
 <p align="center">
   <img src="img/attendance2.png" alt="Your Image" width="400">
 </p>
 
 ####  **3.1.2 Error Handling and logic correction**
-1. If the server is not available, the notification will be "UNAVAILABLE: io exception" and<br>
-the system can still be running, once server is available, response can be received.
+1. If the server is not available, the notification will be "UNAVAILABLE: io exception"<br>
+and the system can still be running, once server is available, response can be received.<br>
 
-2. After a name is entered to the prompt and confirm button is clicked, the prompt is cleared<br>
-so that next name can be entered directly. also, when users get back to first page and go to attendance page<br>
-page again, all the previous data got cleared.
+2. After a name is entered to the prompt and confirm button is clicked, the prompt is<br>
+cleared so that next name can be entered directly. also, when users get back to first<br>
+page and go to attendance page again, all the previous data got cleared.<br>
 
-3. In the server side, when a name is received, the server will always check if ".csv" file is existing.<br>
-If it is, the name will be saved in the file plus the exact time. It keeps the server service stronger.
+3. In the server side, when a name is received, the server will always check if <br>
+".csv" file is existing. If it is, the name will be saved in the file plus the exact<br>
+time. It keeps the server service stronger.
 <br><br>
 ### 3.2 Chat service (bidirectional stream rpc)
 #### 3.2.1 Demonstration
