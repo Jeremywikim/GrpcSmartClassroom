@@ -14,7 +14,7 @@ public class CCTVServerServiceServer {
 
     private void start() throws IOException {
         /* The port on which the server should run */
-        int port = 8083;
+        int port = 20000;
         server = ServerBuilder.forPort(port)
                 .addService(new CCTVServerServiceImpl())
                 .build()

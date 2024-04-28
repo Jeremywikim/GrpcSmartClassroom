@@ -38,7 +38,7 @@ public class GUIDash {
     private void createAndShowGUI() {
         // Initialize gRPC attendanceClient
         attendanceClient = new AttendanceServerServiceClient("localhost", 8080);
-        chatClient = new ChatServerServiceClient("localhost", 8082);
+        chatClient = new ChatServerServiceClient("localhost", 10000);
 
         // give the gui a name
         JFrame frame = new JFrame("Smart Classroom");
@@ -74,7 +74,7 @@ public class GUIDash {
         ChatButton.addActionListener(e -> {
             // Initialize the chat client if it's not already initialized
             if (chatClient == null) {
-                chatClient = new ChatServerServiceClient("localhost", 8082); // Adjust host and port as needed
+                chatClient = new ChatServerServiceClient("localhost", 10000); // Adjust host and port as needed
             }
             cardLayout.show(cardPanel, "chatPage");
         });
@@ -173,9 +173,20 @@ public class GUIDash {
         presentationPanel.add(scrollPane1, BorderLayout.CENTER);
 
         JButton startButton = new JButton("Start Presentation");
+
+        // back button
+        JPanel topPanel1 = new JPanel(new BorderLayout());
+        JButton presentationBackButton = new JButton("Back");
+        presentationBackButton.addActionListener(e -> {
+            presentationArea.setText("");
+            cardLayout.show(cardPanel, "firstPage");
+        });
+        topPanel1.add(presentationBackButton, BorderLayout.EAST); // This puts the button in the top-right corner
+
+
         startButton.addActionListener(e -> startPresentationStream());
         presentationPanel.add(startButton, BorderLayout.SOUTH);
-
+        presentationPanel.add(topPanel1, BorderLayout.NORTH); // Add the top panel to the chat panel at the top
 
 
 

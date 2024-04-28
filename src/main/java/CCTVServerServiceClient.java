@@ -76,7 +76,7 @@ public class CCTVServerServiceClient {
     }
 
     public static void main(String[] args) throws InterruptedException {
-        CCTVServerServiceClient client = new CCTVServerServiceClient("localhost", 8083);
+        CCTVServerServiceClient client = new CCTVServerServiceClient("localhost", 20000);
         try {
             client.streamVideo();
         } finally {
