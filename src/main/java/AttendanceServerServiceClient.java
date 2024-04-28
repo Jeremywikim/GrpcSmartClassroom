@@ -57,26 +57,38 @@ public class AttendanceServerServiceClient {
     /*
     * streamServerRequest is
      */
-    public void streamServerRequest() {
-        StreamObserver<StreamServerResponse> responseObserver = new StreamObserver<StreamServerResponse>() {
-            @Override
-            public void onNext(StreamServerResponse response) {
-                System.out.println("Server message: " + response.getMessage());
-            }
 
-            @Override
-            public void onError(Throwable t) {
-                System.err.println("Error in server streaming: " + t.getMessage());
-            }
-
-            @Override
-            public void onCompleted() {
-                System.out.println("Server streaming completed");
-            }
-        };
-
-        stub.streamServerRequest(StreamServerRequest.newBuilder().setServerName("Server01").build(), responseObserver);
+    public void streamServerRequest(StreamObserver<StreamServerResponse> responseObserver) {
+        StreamServerRequest request = StreamServerRequest.newBuilder()
+                .setServerName("Server01")
+                .build();
+        stub.streamServerRequest(request, responseObserver);
     }
+
+
+
+
+
+//    public void streamServerRequest() {
+//        StreamObserver<StreamServerResponse> responseObserver = new StreamObserver<StreamServerResponse>() {
+//            @Override
+//            public void onNext(StreamServerResponse response) {
+//                System.out.println("Server message: " + response.getMessage());
+//            }
+//
+//            @Override
+//            public void onError(Throwable t) {
+//                System.err.println("Error in server streaming: " + t.getMessage());
+//            }
+//
+//            @Override
+//            public void onCompleted() {
+//                System.out.println("Server streaming completed");
+//            }
+//        };
+//
+//        stub.streamServerRequest(StreamServerRequest.newBuilder().setServerName("Server01").build(), responseObserver);
+//    }
 
 
     /*
@@ -86,7 +98,7 @@ public class AttendanceServerServiceClient {
     public static void main(String[] args) {
         AttendanceServerServiceClient client = new AttendanceServerServiceClient("localhost", 8080);
 //        client.sendUnaryRequest("Client01");
-        client.streamServerRequest();
+//        client.streamServerRequest();
 
         Scanner scanner = new Scanner(System.in);
         while (true) {

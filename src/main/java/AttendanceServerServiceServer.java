@@ -3,17 +3,21 @@ import io.grpc.Server;
 import io.grpc.ServerBuilder;
 import io.grpc.stub.StreamObserver;
 
-import java.io.IOException;
+import java.io.*;
 import java.nio.file.StandardOpenOption;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 import java.time.LocalDateTime;
 
-import java.io.FileWriter;
-import java.io.BufferedWriter;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Paths;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 
 
 public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.StreamingServerServiceImplBase {
@@ -47,17 +51,49 @@ public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.St
     /*
     * this is streamServerRequest
      */
+
     @Override
     public void streamServerRequest(StreamServerRequest request, StreamObserver<StreamServerResponse> responseObserver) {
         String serverName = request.getServerName();
+        List<String> clientNames = new ArrayList<>();
+        // Load client names from CSV, skipping the first line
+        try (BufferedReader reader = new BufferedReader(new FileReader("attendance_records.csv"))) {
+            String line;
+            boolean firstLine = true;
+            while ((line = reader.readLine()) != null) {
+                if (firstLine) {
+                    firstLine = false; // Skip the first line (titles)
+                    continue;
+                }
+                clientNames.add(line.split(",")[0]); // Assuming the name is the first column
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
+
+        AtomicBoolean finished = new AtomicBoolean(false);
+        AtomicInteger nameCounter = new AtomicInteger(1); // Counter for names
+
         Runnable streamingTask = () -> {
             try {
-                while (!Thread.currentThread().isInterrupted()) {
-                    String message = "This is a message from the server: " + serverName + ". Current time: " + LocalDateTime.now();
-                    StreamServerResponse response = StreamServerResponse.newBuilder()
-                            .setMessage(message)
-                            .build();
-                    responseObserver.onNext(response);
+                while (!Thread.currentThread().isInterrupted() && !finished.get()) {
+                    if (clientNames.isEmpty()) {
+                        responseObserver.onNext(StreamServerResponse.newBuilder()
+                                .setMessage("finish!")
+                                .build());
+                        finished.set(true);
+                    } else {
+                        // Pick a random name from the list
+                        int index = (int) (Math.random() * clientNames.size());
+                        String name = clientNames.get(index);
+                        clientNames.remove(index); // Remove the name to avoid resending
+
+                        String message = "Message #" + nameCounter.getAndIncrement() + ": " + name +
+                                " from " + serverName + ". Current time: " + LocalDateTime.now();
+                        responseObserver.onNext(StreamServerResponse.newBuilder()
+                                .setMessage(message)
+                                .build());
+                    }
                     Thread.sleep(5000); // Stream every 5 seconds
                 }
             } catch (InterruptedException e) {
@@ -70,6 +106,36 @@ public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.St
         Thread streamingThread = new Thread(streamingTask);
         streamingThread.start();
     }
+
+
+
+
+
+
+
+//    @Override
+//    public void streamServerRequest(StreamServerRequest request, StreamObserver<StreamServerResponse> responseObserver) {
+//        String serverName = request.getServerName();
+//        Runnable streamingTask = () -> {
+//            try {
+//                while (!Thread.currentThread().isInterrupted()) {
+//                    String message = "This is a message from the server: " + serverName + ". Current time: " + LocalDateTime.now();
+//                    StreamServerResponse response = StreamServerResponse.newBuilder()
+//                            .setMessage(message)
+//                            .build();
+//                    responseObserver.onNext(response);
+//                    Thread.sleep(5000); // Stream every 5 seconds
+//                }
+//            } catch (InterruptedException e) {
+//                Thread.currentThread().interrupt();
+//            } finally {
+//                responseObserver.onCompleted();
+//            }
+//        };
+//
+//        Thread streamingThread = new Thread(streamingTask);
+//        streamingThread.start();
+//    }
 
 
     /*

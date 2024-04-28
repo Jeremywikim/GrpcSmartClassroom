@@ -80,7 +80,7 @@ public class ChatServerServiceServer {
     }
 
     public static void main(String[] args) throws IOException, InterruptedException {
-        ChatServerServiceServer server = new ChatServerServiceServer(8080);
+        ChatServerServiceServer server = new ChatServerServiceServer(8082);
         try {
             server.start();
             server.blockUntilShutdown();

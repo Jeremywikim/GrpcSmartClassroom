@@ -1,5 +1,6 @@
 import com.mingyan.smartClassroom.ChatService.ClassroomMessage;
 import com.mingyan.smartClassroom.attendanceTrackingService.AttendanceResponse;
+import com.mingyan.smartClassroom.attendanceTrackingService.StreamServerResponse;
 import io.grpc.stub.StreamObserver;
 
 import javax.swing.*;
@@ -10,12 +11,13 @@ public class GUIDash {
 
     private JLabel label;
     private JTextField textField;
-    private JTextArea chatArea;
+    private JTextArea chatArea, presentationArea;
     private JTextField chatInput;
     private CardLayout cardLayout;
     private JPanel cardPanel;
     private AttendanceServerServiceClient attendanceClient; // gRPC client for attendance
     private ChatServerServiceClient chatClient; // gRPC client for chat
+
 
     public static void main(String[] args) {
         SwingUtilities.invokeLater(() -> {
@@ -36,7 +38,7 @@ public class GUIDash {
     private void createAndShowGUI() {
         // Initialize gRPC attendanceClient
         attendanceClient = new AttendanceServerServiceClient("localhost", 8080);
-        chatClient = new ChatServerServiceClient("localhost", 8080);
+        chatClient = new ChatServerServiceClient("localhost", 8082);
 
         // give the gui a name
         JFrame frame = new JFrame("Smart Classroom");
@@ -51,8 +53,9 @@ public class GUIDash {
         JPanel firstPanel = new JPanel(new GridLayout(3, 1, 10, 10));
         JButton attendanceButton = new JButton("Attendance");
         JButton ChatButton = new JButton("Chat");
-        JButton CCTVButton = new JButton("CCTV");
+        JButton presentationButton = new JButton("Random Queue For Presentation");
 
+        // Navigate to the attendance page
         // This is used to keep prompt default (in previous test, I found the lat record will be saved there)
         attendanceButton.addActionListener(e -> {
             textField.setText(""); // Clear the text field
@@ -60,19 +63,28 @@ public class GUIDash {
             cardLayout.show(cardPanel, "attendancePage");
         });
 
+
+        // Navigate to the presentation page
+        presentationButton.addActionListener(e -> {
+            cardLayout.show(cardPanel, "presentationPage");
+        });
+
+
         // Navigate to the chat page
         ChatButton.addActionListener(e -> {
             // Initialize the chat client if it's not already initialized
             if (chatClient == null) {
-                chatClient = new ChatServerServiceClient("localhost", 8080); // Adjust host and port as needed
+                chatClient = new ChatServerServiceClient("localhost", 8082); // Adjust host and port as needed
             }
             cardLayout.show(cardPanel, "chatPage");
         });
 
+
+
         // add to gui dashboard
         firstPanel.add(attendanceButton);
         firstPanel.add(ChatButton);
-        firstPanel.add(CCTVButton);
+        firstPanel.add(presentationButton);
 
         /*
           * Panel for the attendance page
@@ -149,6 +161,21 @@ public class GUIDash {
 
 
 
+        /*
+         * Panel for presentation page
+         *
+         */
+
+        JPanel presentationPanel = new JPanel(new BorderLayout());
+        presentationArea = new JTextArea();
+        presentationArea.setEditable(false);
+        JScrollPane scrollPane1 = new JScrollPane(presentationArea);
+        presentationPanel.add(scrollPane1, BorderLayout.CENTER);
+
+        JButton startButton = new JButton("Start Presentation");
+        startButton.addActionListener(e -> startPresentationStream());
+        presentationPanel.add(startButton, BorderLayout.SOUTH);
+
 
 
 
@@ -157,6 +184,7 @@ public class GUIDash {
         cardPanel.add(firstPanel, "firstPage");
         cardPanel.add(attendancePanel, "attendancePage");
         cardPanel.add(chatPanel, "chatPage");
+        cardPanel.add(presentationPanel,"presentationPage");
 
         // Add card panel to the frame
         frame.add(cardPanel, BorderLayout.CENTER);
@@ -250,5 +278,33 @@ public class GUIDash {
             chatInput.setText(""); // Clear input after sending
         }
     }
+
+
+    /*
+    *
+     */
+
+    private void startPresentationStream() {
+        StreamObserver<StreamServerResponse> responseObserver = new StreamObserver<StreamServerResponse>() {
+            @Override
+            public void onNext(StreamServerResponse response) {
+                SwingUtilities.invokeLater(() -> presentationArea.append(response.getMessage() + "\n"));
+            }
+
+            @Override
+            public void onError(Throwable t) {
+                SwingUtilities.invokeLater(() -> presentationArea.append("Error: " + t.getMessage() + "\n"));
+            }
+
+            @Override
+            public void onCompleted() {
+                SwingUtilities.invokeLater(() -> presentationArea.append("Streaming completed.\n"));
+            }
+        };
+
+        attendanceClient.streamServerRequest(responseObserver);
+    }
+
+
 
 }

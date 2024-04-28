@@ -114,7 +114,7 @@ public class ChatServerServiceClient {
 //    }
 //
 //    public static void main(String[] args) throws InterruptedException {
-//        ChatServerServiceClient client = new ChatServerServiceClient("localhost", 8080);
+//        ChatServerServiceClient client = new ChatServerServiceClient("localhost", 8082);
 //        try {
 //            client.chat();
 //        } finally {
