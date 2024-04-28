@@ -88,8 +88,11 @@ public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.St
                         String name = clientNames.get(index);
                         clientNames.remove(index); // Remove the name to avoid resending
 
-                        String message = "Message #" + nameCounter.getAndIncrement() + ": " + name +
+                        String message = "NAME #" + nameCounter.getAndIncrement() + ": " + name +
                                 " from " + serverName + ". Current time: " + LocalDateTime.now();
+//                        String message = "Message #" + nameCounter.getAndIncrement() + ": " + name +
+//                                " from " + serverName + ". Current time: " + LocalDateTime.now();
+
                         responseObserver.onNext(StreamServerResponse.newBuilder()
                                 .setMessage(message)
                                 .build());

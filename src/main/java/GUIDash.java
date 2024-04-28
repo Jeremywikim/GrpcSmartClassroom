@@ -278,6 +278,7 @@ public class GUIDash {
 
                 @Override
                 public void onError(Throwable t) {
+                    chatArea.append("Chat error: " + t.getMessage());
                     System.err.println("Chat error: " + t.getMessage());
                 }
 
