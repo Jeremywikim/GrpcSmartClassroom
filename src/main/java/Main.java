@@ -25,5 +25,21 @@ public class Main {
                 e.printStackTrace();
             }
         }).start();
+
+        new Thread(() -> {
+            try {
+                CCTVServerServiceServer.main(ClassArgs);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+
+        new Thread(() -> {
+            try {
+                CCTVServerServiceClient.main(ClassArgs);
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 }

@@ -24,7 +24,7 @@ public class ChatServerServiceServer {
 
     public void start() throws IOException {
         server.start();
-        logger.info("Server started, listening on " + port);
+        logger.info("Chat Server started, listening on " + port + "\n");
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
             try {
                 ChatServerServiceServer.this.stop();

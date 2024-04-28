@@ -18,10 +18,12 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.logging.Logger;
 
 
 public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.StreamingServerServiceImplBase {
 
+    static final Logger logger = Logger.getLogger(AttendanceServerServiceServer.class.getName());
     /*
     * override send sendUnaryRequest to have some customized features
     * formattedDate is the time when client sends name to the server,
@@ -180,7 +182,8 @@ public class AttendanceServerServiceServer extends StreamingServerServiceGrpc.St
                 .build();
 
         grpcServer.start();
-        System.out.println("Server started, listening on port 8080");
+//        System.out.println("Attendance Server started, listening on port 8080\n");
+        logger.info("Attendance Server started, listening on port 8080\n");
 
         // Graceful shutdown
         Runtime.getRuntime().addShutdownHook(new Thread(() -> {
